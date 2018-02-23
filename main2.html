@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    	<meta name="apple-mobile-web-app-capable" content="yes">
+        <title>Map Interface Demo</title>
+	
+        <script src="js/jquery-1.9.1.min.js"></script>
+        <link rel="stylesheet" href="js/jquery.mobile/jquery.mobile-1.3.2.min.css" />
+	    <script src="js/jquery.mobile/jquery.mobile-1.3.2.min.js"></script>
+        <script src="http://maps.google.com/maps/api/js?v=3&amp;sensor=false"></script>
+        <link rel="stylesheet" href="js/OpenLayers/theme/default/style.css" type="text/css">
+    	<link rel="stylesheet" href="css/style.css" type="text/css">
+    	<script src="js/OpenLayers/OpenLayers.js"></script>
+
+    	<script type="text/javascript">
+    		var lon = 5;
+	        var lat = 40;
+	        var zoom = 5;
+	        var map, select;
+
+	        function init(){
+	            var options = {
+	                projection: new OpenLayers.Projection("EPSG:900913"),
+	                displayProjection: new OpenLayers.Projection("EPSG:4326")
+	            };
+	            map = new OpenLayers.Map('map', options);
+	            var mapnik = new OpenLayers.Layer.OSM("OpenStreetMap (Mapnik)");
+	            var gmap = new OpenLayers.Layer.Google("Google Satellite", {type: google.maps.MapTypeId.SATELLITE, numZoomLevels: 22});
+	            map.addLayer(gmap);
+	            /*
+	            var sundials = new OpenLayers.Layer.Vector("KML", {
+	                projection: map.displayProjection,
+	                strategies: [new OpenLayers.Strategy.Fixed()],
+	                protocol: new OpenLayers.Protocol.HTTP({
+	                    url: "kml/sundials.kml",
+	                    format: new OpenLayers.Format.KML({
+	                        extractStyles: true,
+	                        extractAttributes: true
+	                    })
+	                })
+	            });
+
+	            map.addLayers([ gmap, sundials]);
+
+	            select = new OpenLayers.Control.SelectFeature(sundials);
+	            
+	            sundials.events.on({
+	                "featureselected": onFeatureSelect,
+	                "featureunselected": onFeatureUnselect
+	            });
+	  
+	            map.addControl(select);
+	            select.activate();   
+
+	            map.addControl(new OpenLayers.Control.LayerSwitcher());
+
+	            map.zoomToExtent(
+	                new OpenLayers.Bounds(
+	                	
+	                    4517738.6833759,14133657.95981,14139653.489216,4521947.4972453
+	                ).transform(map.displayProjection, map.projection)
+	            );*/
+
+	            setCenter();
+	            setMarker();
+
+				$('#listview li').bind('click', function () {
+				    $('#listview li').attr("data-theme", "c").removeClass("ui-btn-up-b").removeClass('ui-btn-hover-b').addClass("ui-btn-up-c").addClass('ui-btn-hover-c');
+				    $(this).attr("data-theme", "b").removeClass("ui-btn-up-c").removeClass('ui-btn-hover-c').addClass("ui-btn-up-b").addClass('ui-btn-hover-b');
+				    console.log($(this).position());
+				    /*draw line2*/
+					drawline();
+				});
+				$('#listview li').removeClass('ui-btn-icon-right');
+
+				/*drawline*/
+				$('#origin-point').click(function() {
+				    var linkLine = $('<div id="new-link-line"></div>').appendTo('body');
+				    
+				    linkLine
+				        .css('top', $('#origin-point').offset().top + $('#origin-point').outerWidth() / 2)
+				        .css('left', $('#origin-point').offset().left + $('#origin-point').outerHeight() / 2);
+				    
+				    $(document).mousemove(linkMouseMoveEvent);
+
+				    // Cancel on right click
+				    $(document).bind('mousedown.link', function(event) {
+				        if(event.which == 3) {
+				            endLinkMode();
+				        }
+				    });
+
+				    $(document).bind('keydown.link', function(event) {
+				        // ESCAPE key pressed
+				        if(event.keyCode == 27) {
+				            endLinkMode();
+				        }
+				    });
+				});
+
+				
+
+
+/*
+	            $('li').click(function(){
+	            	if($(this).css('background-color')==='gray'){
+	            		$(this).css({'background-color':'white'});
+	            	}else{
+	            		$(this).css({'background-color':'gray'});
+	            	}
+	            });
+*/
+	        }
+	        function drawline(){
+	        	var pointList = [];
+	        	/*
+	        	var start_point = new OpenLayers.Geometry.Point(126.9825450078866, 37.58928500802984);
+				var end_point = new OpenLayers.Geometry.Point(126.974915812873, 37.5658042673525);
+				126.977222, 37.578611
+				*/
+				
+				var vector = new OpenLayers.Layer.Vector();
+				vector.addFeatures([new OpenLayers.Feature.Vector(new OpenLayers.Geometry.LineString([start_point, end_point]).transform(new OpenLayers.Projection("EPSG:4326"), new OpenLayers.Projection("EPSG:900913")))]);
+				map.addLayers([vector]);
+	        }
+	        function onPopupClose(evt) {
+	            select.unselectAll();
+	        }
+	        function onFeatureSelect(event) {
+	            var feature = event.feature;
+	            var selectedFeature = feature;
+	            var popup = new OpenLayers.Popup.FramedCloud("chicken", 
+	                feature.geometry.getBounds().getCenterLonLat(),
+	                new OpenLayers.Size(100,100),
+	                "<h2>"+feature.attributes.name + "</h2>" + feature.attributes.description,
+	                null, true, onPopupClose
+	            );
+	            feature.popup = popup;
+	            map.addPopup(popup);
+	        }
+	        function onFeatureUnselect(event) {
+	            var feature = event.feature;
+	            if(feature.popup) {
+	                map.removePopup(feature.popup);
+	                feature.popup.destroy();
+	                delete feature.popup;
+	            }
+	        }
+	        function setCenter(){
+	        	map.setCenter(
+		            new OpenLayers.LonLat(126.9945052690473, 37.58079732068381).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ), 15
+        		);
+	        }
+
+	        function setMarker(){
+	        	var markers = new OpenLayers.Layer.Markers( "Markers" );
+				map.addLayer(markers);
+
+				var size = new OpenLayers.Size(19,23);
+				var offset = new OpenLayers.Pixel(-(size.w/2), -size.h);
+				var icon = new OpenLayers.Icon('images/POI_marker.png', size, offset);
+				//삼청동길
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.9825450078866, 37.58928500802984).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon));
+				//덕수궁126.974915812873, 37.5658042673525
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.974915812873, 37.5658042673525).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon.clone()));
+				//경복궁
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.977222, 37.578611).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon.clone()));
+				//창경궁126.9945052690473, 37.58079732068381
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.993928,37.582916).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon.clone()));
+				//북촌한옥마을
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.9886864194411, 37.57853359000109).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon.clone()));
+				//쌈지길
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.9849118900116, 37.57407570726118).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon.clone()));
+				//종묘
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.994143,37.574583).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon.clone()));
+				//인사동
+				markers.addMarker(new OpenLayers.Marker(new OpenLayers.LonLat(126.9855423744308,  37.574553441169).transform(
+		                new OpenLayers.Projection("EPSG:4326"),
+		                map.getProjectionObject()
+		            ),icon.clone()));
+	        }
+
+
+	        function linkMouseMoveEvent(event) {
+			    if($('#new-link-line').length > 0) {
+			        var originX = $('#origin-point').offset().left + $('#origin-point').outerWidth() / 2;
+			        var originY = $('#origin-point').offset().top + $('#origin-point').outerHeight() / 2;
+			        
+			        var length = Math.sqrt((event.pageX - originX) * (event.pageX - originX) 
+			            + (event.pageY - originY) * (event.pageY - originY));
+			    
+			        var angle = 180 / 3.1415 * Math.acos((event.pageY - originY) / length);
+			        if(event.pageX > originX)
+			            angle *= -1;
+			    
+			        $('#new-link-line')
+			            .css('height', length)
+			            .css('-webkit-transform', 'rotate(' + angle + 'deg)')
+			            .css('-moz-transform', 'rotate(' + angle + 'deg)')
+			            .css('-o-transform', 'rotate(' + angle + 'deg)')
+			            .css('-ms-transform', 'rotate(' + angle + 'deg)')
+			            .css('transform', 'rotate(' + angle + 'deg)');
+			    }
+			}
+			    
+			function endLinkMode() {
+			    $('#new-link-line').remove();
+			    $(document).unbind('mousemove.link').unbind('click.link').unbind('keydown.link');
+			}
+
+    	</script>
+
+    	<style type="text/css">
+	        html, body {
+	            height: 100%;
+	        }
+	        #map {
+	        	position: absolute;
+	        	z-index: 10;
+
+	            width: 100%;
+	            height: 100%;
+	        }
+	        #listview{
+	        	position: absolute;
+	        	z-index: 999;
+	        	right:0;
+	        	top:10px;
+	        	width:25%;
+	        }
+	        #OpenLayers_Control_MaximizeDiv{
+	        	display: none;
+	        }
+	        .ui-input-search{
+	        		
+	        	
+	        }
+	        .ui-li{
+	        	top:10px;
+	        	opacity: 0.9;
+
+	        }
+	        .doc-title{
+	        	font-weight: bold;
+	        }
+	        .doc-summary{
+	        	font-size:10px !important;
+	        	white-space: normal;
+
+	        }
+	        .doc-image{
+	        	float:left;
+
+	        	margin-top: 12px;
+	        	margin-left: 5px;
+	        	
+	        }
+	        .doc-hyperlink{
+	        	font-size: 9px;
+				color: blue !important;
+				text-decoration: none;
+				margin-bottom: 0px;
+	        }
+
+/*drawline*/
+	        #new-link-line {
+			    position: absolute;
+			    width: 3px;
+			    background-color: #06a;
+			    z-index: 100;
+			    -webkit-transform-origin: top left;
+			    -moz-transform-origin: top left;
+			    -o-transform-origin: top left;
+			    -ms-transform-origin: top left;
+			    transform-origin: top left;
+			}
+	    </style>
+    </head>
+
+    <body onload="init()">
+    	<div id="map" class="map"></div>
+    	
+    	<div id="listview">
+    		<ul role="listbox" data-role="listview" data-inset="true" data-filter="true" data-filter-placeholder="search"  data-filter-theme="b" data-theme="c">
+			  <li>
+			  	<img class="doc-image" src="http://xuaninkorea.files.wordpress.com/2011/08/screen-shot-2011-08-27-at-12-49-42-am.png?w=584"/>
+			  	<p class="doc-title">Day 3 in Seoul (Gyeongbokgung Palace, Changdeokgung Palace ...</p>
+			  	<p class="doc-summary"> Day 3 in Seoul (Gyeongbokgung Palace, Changdeokgung Palace, Changgyeonggung Palace, Jongmyo Shrine, Cheonggyecheon Stream, Dongdaemun) ...</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://1.bp.blogspot.com/_ibYf9WqYJm4/SlqySniSi4I/AAAAAAAAA0U/jtFrh_3t3lo/s400/July+2009+045.JPG5" style="margin-top:0px !important; margin-left:15px !important;"/>
+			  	<p class="doc-title">Adventures in Korea: Jongmyo Shrine and Gyeongbokgung Palace</p>
+			  	<p class="doc-summary">According to Wikipedia, Jongmyo Shrine is a Confucian shrine dedicated to the memorial services for the deceased kings and queens of the Korean Joseon Dynasty.</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://tv01.search.naver.net/ugc?t=r80&q=http://blogfiles.naver.net/20140220_18/soojeong223_1392895324914wbP41_JPEG/DSC05509.JPG#550x412" style="margin-top:20px !important;"/>
+			  	<p class="doc-title">Jongmyo and Gyeongbokgung Palace, Bukchon Village ... </p>
+			  	<p class="doc-summary">Bukchon Hanok Village is one of Seoul's traditional folk village located nearby Gyeongbokgung. Gyeongbokgung Palace and Jongmyo Shrine ... Related Posts Plugin for WordPress, Blogger.</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://tv02.search.naver.net/kwebthumb?type=r80&q=http://ojsfile.ohmynews.com/STD_IMG_FILE/2012/0227/IE001407251_STD.JPG#520x351"/>
+			  	<p class="doc-title">South Korea Itinerary Part 2(c): Seoul – Palaces, Jongmyo Shrine ... </p>
+			  	<p class="doc-summary">Start early with Gyeongbokgung Palace (pictured above), the biggest and most important palace. It was first built in 1394 but was destroyed by palace servants...</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://tv01.search.naver.net/ugc?t=r80&q=http://blogfiles.naver.net/20130412_208/vita_books_1365755773055hwwuu_JPEG/%C7%D1%BD%C4%B4%E7.jpg#550x570"style="margin-top:0px !important;"/>
+			  	<p class="doc-title">Bonnie's Blog : Gyeongbokgung Palace 경복궁</p>
+			  	<p class="doc-summary">Gyeongbokgung Palace 경복궁. Gyeongbokgung was first built in 1395, but the site was abandoned and rebuilt in 1867 by the Chosun ...</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://lh3.ggpht.com/-k0n93vUL_io/UZT8m_MrK6I/AAAAAAAABhs/A-tHJiOEgB4/DSC_0047_thumb.jpg?imgmax=800"/>
+			  	<p class="doc-title">I'm 20++: Gyeongbokgung Palace & Bukchon Hanok Village</p>
+			  	<p class="doc-summary">Gyeongbokgung Palace & Bukchon Hanok Village. Upon arriving at Seoul, we sat a 1 hr subway to our hostel (ZAZA backpackers guest house) ....</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://tv02.search.naver.net/ugc?t=r80&q=http://blogfiles.naver.net/20140201_68/wjddms1324_1391263872456HsjXo_JPEG/DSC02414.JPG#740x491"/>
+			  	<p class="doc-title">Luxurious Hanok Stay#3 @Bukchon in SEOUL</p>
+			  	<p class="doc-summary">Located in Bukchon Hanok Village with a 600-year-old history. ... tourist attractions, such as Gyeongbokgung Palace, Jongmyo Shrine, Changdeokgung Palace,  ...</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://tv02.search.naver.net/ugc?t=r100&q=http://blogfiles.naver.net/20140209_40/hsnolove_13919483373924NaSA_JPEG/IMG_0036.JPG"/>
+			  	<p class="doc-title">경복궁 나들이-경복궁 창경궁 야간개장</p>
+			  	<p class="doc-summary">계절별로 하는데, 올 해는 꼭 한번 방문해 보고 싶네요. 창경궁, 경복궁 야간개방 개방일시 창경궁 : 2014년 2월11일 ~ 2월16일(6일간) 경복궁 : 2014년 2월12일 ~ 2월17일(6일간)</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://tv02.search.naver.net/ugc?t=r80&q=http://blogfiles.naver.net/20131230_192/josephine51_1388377981340HzsFj_JPEG/DSC02017.JPG#550x365"/>
+			  	<p class="doc-title">2014년 창경궁/경복궁 겨울 야간개방</p>
+			  	<p class="doc-summary">2014년 창경궁/경복궁 겨울 야간 개방 일정이 떴네요! 출처: 문화재청 페이스북 정월대보름을 전후해서, 고궁의 설경을 감상할 수 있게끔 개방한다네요! 저는 지난 봄에...</p>
+			  </li>
+			  <li>
+			  	<img class="doc-image" src="http://tv01.search.naver.net/ugc?t=r100&q=http://blogfiles.naver.net/20131107_237/1016gmlwls_1383799520713cMdkM_PNG/%C1%A6%B8%F1_%BE%F8%C0%BD_%281%29.png"/>
+			  	<p class="doc-title">추천_서울 고궁나들이(창덕궁,창경궁,경복궁)</p>
+			  	<p class="doc-summary">서울 고궁 나들이 창덕궁,창경궁,경복궁을 느리게 느리게 걷기. 가족 서울 당일치기 여행 & 연인들 데이트하기 좋은 여행지 추천~ 서울 당일치기 여행지 추천, 서울 고궁...</p>
+			  </li>
+			</ul>
+    	</div>
+
+   	</body>
+
+</html>
